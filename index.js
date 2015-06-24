@@ -1,4 +1,5 @@
 var send = require('koa-send'),
+    path  = require('path'),
     fs = require('fs');
 
 module.exports = serve;
@@ -12,14 +13,15 @@ module.exports = serve;
  * @return {Function}
  * @api public
  */
-function serve(root){
+function serve(root, alias){
     if(!root) throw Error('Root must be defined.');
     if(typeof root !== 'string') throw TypeError('Path must be a defined string.');
-    
-    var rootStat = fs.statSync(root);
+    if (typeof alias == 'undefined' || alias == null) alias = root;
+
+    var rootStat = fs.statSync(path.join(process.cwd(), root));
     if(!rootStat.isDirectory()) throw Error('Root should be a directory.');
     
-    var finalFiles = walk(root);
+    var finalFiles = walk(root, alias, root);
     
     root = fs.realpathSync(root);
     if(!root) throw Error('Root must be a valid path.');
@@ -31,7 +33,7 @@ function serve(root){
     }
 }
 
-function walk(directory, finalFiles) {
+function walk(root, alias, directory, finalFiles) {
     var finalFiles = finalFiles || [];
     var files = fs.readdirSync(directory);
     for(var i=0; i<files.length; i++) {
@@ -39,10 +41,10 @@ function walk(directory, finalFiles) {
         if(!file) continue;
         file = directory + '/' + file;
         if(fs.statSync(file).isDirectory()) {
-            walk(file, finalFiles);
+            walk(root, alias, file, finalFiles);
         }
         else {
-            finalFiles[file.replace('.', '')] = file;
+            finalFiles[file.replace(root, alias)] = file;
         }
     }
     return finalFiles;
